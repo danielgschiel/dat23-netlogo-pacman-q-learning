@@ -1,0 +1,160 @@
+;; Patches give the agents their respective reward functions and are defined in this file 
+
+
+;; Patch definitions 
+patches-own [ 
+  pellet-grid?
+  visited-x-times?
+  reward-pacman
+  reward-ghost-red
+  reward-ghost-green 
+  reward-ghosts 
+]
+
+;;;;;;;;;;;;;;;; PACMAN REWARDS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Reward function Pacman 
+to calc-reward-pacman
+  
+  ask patches [
+    let r 0 
+    
+    
+    if pcolor = white [
+      set r  r + reward-pellet
+    ]
+    
+    if pcolor = black [
+      set r r + punishment-no-pellet
+    ]  
+    
+    if pacmans-method = "visited-patch-method" or pacmans-method = "combination-method" [ 
+    if visited-x-times? > visited-limit [
+      set r r + punishment-visited-too-often + punishment-no-pellet
+    ]
+    ]
+    
+    if any? ghosts-here [ 
+      set r r + punishment-caught 
+    ]
+    
+    if pacmans-method = "nearest-pellet-method" or pacmans-method = "combination-method" [
+      let remaining patches with [pellet-grid? = true and pcolor = white] 
+    
+      if any? remaining [
+        let nearest min-one-of remaining [ distance myself ] 
+        
+        let distance-px ([pxcor] of nearest) - pxcor 
+        let distance-py ([pycor] of nearest) - pycor 
+        
+        set r r - punishment-distance-nearest-pellet-multiplier * (abs(distance-px) + abs(distance-py) )  
+      ]
+    
+    ]
+    
+    
+    set reward-pacman r 
+    
+    
+    ; Labeling 
+    ifelse show-label-reward-pacman [
+      set plabel-color white 
+      set plabel reward-pacman
+     
+      if pcolor = white [
+        set plabel-color black 
+      ]
+      
+      if pcolor = blue [
+        set plabel ""
+      ]
+    ]
+    [
+      set plabel ""
+    ]
+    
+  ]
+  
+end 
+
+
+;;;;;;;;;;;;;;;;;; GHOSTS REWARDS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; Reward function ghosts 
+to calc-reward-ghosts 
+  
+  ask patches [
+    
+    let r 0 
+    
+    
+    ifelse one-of pacmans in-radius 2.9 != nobody [
+      set r r + reward-radius 
+    ] [
+      set r r + punishment-pacman-not-nearby 
+    ]
+    
+    if one-of pacmans in-radius 1 != nobody [
+      set r r + reward-next-to-pacman 
+    ]
+    
+    if any? pacmans-here [
+      set r r + reward-caught
+    ]
+
+    if ghosts-method = "exact-location-method" or ghosts-method = "joint-exact-location-method"[
+      let pc-patch patches with [any? pacmans-here] 
+      let pc-patchxcor [pxcor] of one-of pc-patch 
+      let pc-patchycor [pycor] of one-of pc-patch 
+      
+      set r r - punishment-distance-pacman-multiplier * (abs(pxcor - pc-patchxcor) + abs (pycor - pc-patchycor))
+    ]    
+    
+    set reward-ghost-red r 
+    set reward-ghost-green r  
+    
+  ]
+  
+  ask patches [
+    let r 0
+      ask ghosts [
+    
+      if who = 1 [
+        ask ghosts with [who = 2] [
+          set r r + [reward-ghost-green] of patch-here
+        ]
+        
+      ]
+    
+      if who = 2 [
+        ask ghosts with [who = 1] [ 
+          set r r + [reward-ghost-red] of patch-here 
+        ]
+      ]
+    
+    ]
+
+set reward-ghosts r    
+  ]  
+  
+  ; Labeling 
+  ask patches [
+    
+   ifelse show-label-reward-ghosts [
+      set plabel reward-ghost-red
+    ] [
+      set plabel ""
+    ]
+    
+    
+    if pcolor = blue [
+      set plabel ""
+    ]
+    
+    
+    
+  ]
+  
+end 
+

@@ -1,0 +1,666 @@
+;; Ghost Procedures
+
+; Includes:
+; Ghost Breed
+; ghost-setup 
+; move-ghosts-red 
+; move-ghosts-green 
+; ghosts-learning
+; move-ghosts-random
+
+;;;;;;;;;;;;;;;;;; GHOSTS GENERAL DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Ghosts specific turtle
+breed [ ghosts ghost ]
+ghosts-own [
+
+  new-heading
+
+  patchxcor
+  patchycor
+  
+  ghost-patch-up
+  ghost-patch-right
+  ghost-patch-down
+  ghost-patch-left 
+  
+  pacman-pos 
+  
+  pacman-top-left
+  pacman-top-right 
+  pacman-bottom-left
+  pacman-bottom-right 
+  
+  ghost-pc-top-left
+  ghost-pc-top-right
+  ghost-pc-bottom-left
+  ghost-pc-bottom-right
+  
+  pacman-dx
+  pacman-dy
+  
+  ghost-dx
+  ghost-dy
+  
+  ghost-pc-dx
+  ghost-pc-dy
+
+  episode-ticks-ghost
+  episode-return-ghost
+
+]
+
+;; Setup Ghosts- Red Ghost and Green Ghost + learning 
+to ghost-setup
+  
+  create-ghosts 2
+
+  ; State definitions 
+  ghosts-learning 
+
+  ask ghosts with [who = 1] [
+    setxy -1 0
+    set shape "face sad"
+    set color red
+  ]
+  
+  ask ghosts with [who = 2] [
+    setxy 1 0
+    set shape "face sad"
+    set color green
+  ]
+  
+ 
+  ; Writing results in files 
+ if write-episode-return-ghosts-flag [
+    write-episode-return-ghost filename-episode-return-ghost-red 1 1 
+    write-episode-return-ghost filename-episode-return-ghost-green 2 1 
+  ] 
+  
+ if write-episode-ticks-ghosts-flag [
+    write-episode-ticks-ghost filename-episode-ticks-ghost-red 1 1
+    write-episode-ticks-ghost filename-episode-ticks-ghost-green 1 1
+  ] 
+    
+  
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;; STATE DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; State definition for the ghosts
+to ghosts-learning 
+  
+  
+  if ghosts-method = "approximate-location-method" [
+  ;Red Ghost Learning  
+  ask ghosts with [who = 1] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-top-left" "pacman-top-right" "pacman-bottom-left" "pacman-bottom-right"
+      ]
+    (qlearningextension:actions [ ghost-red-move-up ] [ ghost-red-move-right ] [ ghost-red-move-down ] [ ghost-red-move-left ])
+    qlearningextension:reward [ rewardFunc-ghost-red ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghost-red
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]
+
+  ; Green Ghost Learning
+  ask ghosts with [who = 2] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-top-left" "pacman-top-right" "pacman-bottom-left" "pacman-bottom-right" 
+      ]
+    (qlearningextension:actions [ ghost-green-move-up ] [ ghost-green-move-right ] [ ghost-green-move-down ] [ ghost-green-move-left ])
+    qlearningextension:reward [ reward-ghost-green ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghost-green
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]
+ ]
+  
+  if ghosts-method = "exact-location-method" [
+  ask ghosts with [who = 1] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-dx" "pacman-dy"
+      ]
+    (qlearningextension:actions [ ghost-red-move-up ] [ ghost-red-move-right ] [ ghost-red-move-down ] [ ghost-red-move-left ])
+    qlearningextension:reward [ rewardFunc-ghost-red ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghost-red
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]
+
+  ; Green Ghost Learning
+  ask ghosts with [who = 2] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-dx" "pacman-dy"
+      ]
+    (qlearningextension:actions [ ghost-green-move-up ] [ ghost-green-move-right ] [ ghost-green-move-down ] [ ghost-green-move-left ])
+    qlearningextension:reward [ reward-ghost-green ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghost-green
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]    
+  ]
+  
+  if ghosts-method = "joint-approximate-location-method" [
+      ask ghosts with [who = 1] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-top-left" "pacman-top-right" "pacman-bottom-left" "pacman-bottom-right"
+        "ghost-pc-top-left" "ghost-pc-top-right" "ghost-pc-bottom-left" "ghost-pc-bottom-right"
+      ]
+    (qlearningextension:actions [ ghost-red-move-up ] [ ghost-red-move-right ] [ ghost-red-move-down ] [ ghost-red-move-left ])
+    qlearningextension:reward [ rewardFunc-ghosts ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghosts
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]
+
+  ; Green Ghost Learning
+  ask ghosts with [who = 2] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-top-left" "pacman-top-right" "pacman-bottom-left" "pacman-bottom-right"
+         "ghost-pc-top-left" "ghost-pc-top-right" "ghost-pc-bottom-left" "ghost-pc-bottom-right"
+        
+      ]
+    (qlearningextension:actions [ ghost-green-move-up ] [ ghost-green-move-right ] [ ghost-green-move-down ] [ ghost-green-move-left ])
+    qlearningextension:reward [ rewardFunc-ghosts ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghosts
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]   
+]
+
+  if ghosts-method = "joint-exact-location-method" [
+      ask ghosts with [who = 1] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-dx" "pacman-dy"
+
+        "ghost-pc-dx" "ghost-pc-dy"
+        
+      ]
+    (qlearningextension:actions [ ghost-red-move-up ] [ ghost-red-move-right ] [ ghost-red-move-down ] [ ghost-red-move-left ])
+    qlearningextension:reward [ rewardFunc-ghosts ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghosts
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]
+
+  ; Green Ghost Learning
+  ask ghosts with [who = 2] [
+      qlearningextension:state-def [
+        "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
+        "ghost-dx" "ghost-dy"
+        
+        "pacman-dx" "pacman-dy"
+
+        "ghost-pc-dx" "ghost-pc-dy"
+      ]
+    (qlearningextension:actions [ ghost-green-move-up ] [ ghost-green-move-right ] [ ghost-green-move-down ] [ ghost-green-move-left ])
+    qlearningextension:reward [ rewardFunc-ghosts ]
+    qlearningextension:end-episode [ is-caught-state? ] reset-episode-ghosts
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-ghosts
+    qlearningextension:discount-factor discount-factor-ghosts
+    ]   
+]
+    
+  
+  
+end
+
+
+;;;;;;;;;;;;;;;;; STATE FUNCTIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+; Retrieve current state before action 
+to ghosts-get-current-state
+  
+  ask ghosts [
+    
+    set patchxcor [pxcor] of patch-here 
+    set patchycor [pycor] of patch-here 
+    
+     if who = 1 [
+        set ghost-dx [xcor] of one-of ghosts with [who = 2] - xcor
+        set ghost-dy [ycor] of one-of ghosts with [who = 2] - ycor
+      ]
+      
+      if who = 2 [
+        set ghost-dx [xcor] of one-of ghosts with [who = 1] - xcor
+        set ghost-dy [ycor] of one-of ghosts with [who = 1] - ycor
+      ]
+    
+    
+    ;; Patches in a Von Neumann Grid 
+    let u patch-at 0 1 
+    let r patch-at -1 0
+    let d patch-at 0 -1
+    let l patch-at 1 0 
+    
+    set ghost-patch-up    ifelse-value [pcolor] of u = blue [1] [0]
+    set ghost-patch-right ifelse-value [pcolor] of r = blue [1] [0]
+    set ghost-patch-down  ifelse-value [pcolor] of d = blue [1] [0]
+    set ghost-patch-left  ifelse-value [pcolor] of l = blue [1] [0]
+    
+    if any? pacmans-on u   [set ghost-patch-up    2]
+    if any? pacmans-on r   [set ghost-patch-right 2]
+    if any? pacmans-on d   [set ghost-patch-down  2]
+    if any? pacmans-on l   [set ghost-patch-left  2]    
+    
+    
+    if ghosts-method = "approximate-location-method" or ghosts-method = "joint-approximate-location-method" [
+      
+     ;; Calculate the position of pacman in relation to the ghosts 
+      let pc-xcor [xcor] of one-of pacmans 
+      let pc-ycor [ycor] of one-of pacmans 
+    
+    ifelse abs(pc-xcor - xcor) <= 2 and abs(pc-ycor - ycor)  <= 2 [
+      let matx pc-xcor - xcor 
+      let maty pc-ycor - ycor 
+      
+      set pacman-pos calculate-mat-num matx maty 
+      
+    ] 
+    [
+      set pacman-pos 0 
+    ]
+    
+    ; Based on calculate-mat-num the quadrants of where Pacman could be 
+    let top-left-list [1 2 3 6 7 8 11 12]
+    let top-right-list [3 4 5 8 9 10 14 15]
+    let bottom-left-list [11 12 16 17 18 21 22 23]
+    let bottom-right-list [14 15 18 19 20 23 24 25]
+    
+    set pacman-top-left 0
+    set pacman-top-right 0
+    set pacman-bottom-left 0 
+    set pacman-bottom-right 0
+    
+    
+    if member? pacman-pos top-left-list [
+      set pacman-top-left 1
+    ]
+    
+    if member? pacman-pos top-right-list [
+      set pacman-top-right 1
+    ]
+    
+    if member? pacman-pos bottom-left-list [
+      set pacman-bottom-left 1
+    ]
+    
+    if member? pacman-pos bottom-right-list [
+      set pacman-bottom-right 1
+    ]
+      
+    ]
+    
+    if ghosts-method = "exact-location-method" or ghosts-method = "joint-exact-location-method" [
+      
+      set pacman-dx [xcor] of one-of pacmans - xcor
+      set pacman-dy [ycor] of one-of pacmans - ycor 
+      
+    ]
+    
+  ]
+  
+  ask ghosts [
+    
+    if ghosts-method = "joint-approximate-location-method" [
+      
+      if who = 1 [
+      
+        set ghost-pc-top-left     [pacman-top-left] of one-of ghosts with [who = 2]
+        set ghost-pc-top-right    [pacman-top-right] of one-of ghosts with [who = 2]
+        set ghost-pc-bottom-left  [pacman-bottom-left] of one-of ghosts with [who = 2]
+        set ghost-pc-bottom-right [pacman-bottom-right] of one-of ghosts with [who = 2] 
+      ]
+      
+      if who = 2 [
+        
+        set ghost-pc-top-left     [pacman-top-left] of one-of ghosts with [who = 1]
+        set ghost-pc-top-right    [pacman-top-right] of one-of ghosts with [who = 1]
+        set ghost-pc-bottom-left  [pacman-bottom-left] of one-of ghosts with [who = 1]
+        set ghost-pc-bottom-right [pacman-bottom-right] of one-of ghosts with [who = 1]
+        
+      ]
+    ]
+    
+   if ghosts-method = "joint-exact-location-method" [
+      if who = 1 [ 
+        
+        set ghost-pc-dx [pacman-dx] of one-of ghosts with [who = 2]
+        set ghost-pc-dx [pacman-dx] of one-of ghosts with [who = 2]
+      ]
+      
+      if who = 2 [
+      
+      set ghost-pc-dx [pacman-dx] of one-of ghosts with [who = 1]
+      set ghost-pc-dx [pacman-dx] of one-of ghosts with [who = 1]
+    ] 
+  ]
+    
+  ]
+  
+  
+end 
+
+; Update state after action 
+to ghost-update-env 
+  
+  ifelse ghosts-method = "joint-approximate-location-method" or ghosts-method = "joint-exact-location-method" [
+    
+    ask ghosts [
+      set episode-return-ghost episode-return-ghost + [reward-ghosts] of patch-here
+      set episode-ticks-ghost episode-ticks-ghost + 1
+    ]
+    
+  ]
+  
+  [
+    
+   ask ghosts with [who = 1] [
+      set episode-return-ghost episode-return-ghost + [reward-ghost-red] of patch-here 
+      set episode-ticks-ghost episode-ticks-ghost + 1 
+    ]
+  
+    ask ghosts with [who = 2] [
+      set episode-return-ghost episode-return-ghost + [reward-ghost-green] of patch-here 
+      set episode-ticks-ghost episode-ticks-ghost + 1 
+    
+    ] 
+  ]
+
+    
+  
+  
+end
+
+;;;;;;;;;;;;;;;;;;;; REWARD AND EPISODE END DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Reward for both ghosts defined in patches_reward.nls 
+to-report rewardFunc-ghost-red
+  report [reward-ghost-red] of patch-here 
+end 
+
+to-report rewardFunc-ghost-green
+  report [reward-ghost-green] of patch-here 
+end 
+
+
+to-report rewardFunc-ghosts
+  report [reward-ghosts] of patch-here
+  
+end 
+
+; Reset episode for Ghost Red not joint 
+to reset-episode-ghost-red
+  
+  if write-episode-return-ghosts-flag [
+    write-episode-return-ghost filename-episode-return-ghost-red 1 0
+  ]
+  
+  if write-episode-ticks-ghosts-flag [
+    write-episode-ticks-ghost filename-episode-ticks-ghost-red 1 0 
+  ]
+  
+  if is-all? = false [
+  set episode-check episode-check + 1 
+  ]
+  
+  
+  if is-caught-state?  [
+    set-current-plot "Ghost Return per Episode"
+    set-current-plot-pen "ghost-red"
+    set-plot-pen-color red 
+    plot episode-return-ghost 
+    
+    set-current-plot "Ghost Ticks per Episode"
+    set-current-plot-pen "ghost-red"
+    set-plot-pen-color red 
+    plot episode-ticks-ghost 
+  ]
+  
+  
+    if is-random? [
+    ask pacmans [
+      setxy 0 -5
+    ]
+  ]
+ 
+  setxy -1 0
+  
+  
+  set episode-ticks-ghost 0
+  set episode-return-ghost 0
+  
+  
+end 
+
+; Reset episode Ghost Green not joint
+to reset-episode-ghost-green
+  
+    if write-episode-return-ghosts-flag [
+    write-episode-return-ghost filename-episode-return-ghost-green 2 0
+  ]
+  
+  if write-episode-ticks-ghosts-flag [
+    write-episode-ticks-ghost filename-episode-ticks-ghost-green 2 0 
+  ]
+  
+  if is-all? = false [
+  set episode-check episode-check + 1 
+  ]
+  
+  if is-caught-state?  [
+    set-current-plot "Ghost Return per Episode"
+    set-current-plot-pen "ghost-green"
+    set-plot-pen-color green
+    plot episode-return-ghost 
+    
+    set-current-plot "Ghost Ticks per Episode"
+    set-current-plot-pen "ghost-green"
+    set-plot-pen-color green
+    plot episode-ticks-ghost   
+  ]
+  
+    if is-random? [
+    ask pacmans [
+      setxy 0 -5
+    ]
+  ]
+  
+  setxy 1 0
+  
+  
+  set episode-ticks-ghost 0
+  set episode-return-ghost 0
+end
+
+
+; Reset episode joint 
+to reset-episode-ghosts
+  
+  if write-episode-return-ghosts-flag [
+    write-episode-return-ghost filename-episode-return-ghost-red 1 0
+    write-episode-return-ghost filename-episode-return-ghost-green 2 0
+  ]
+  
+  if write-episode-ticks-ghosts-flag [
+    write-episode-ticks-ghost filename-episode-ticks-ghost-red 1 0 
+    write-episode-ticks-ghost filename-episode-ticks-ghost-green 2 0 
+  ]
+  
+  if is-all? = false [
+  set episode-check episode-check + 1 
+  ]
+  
+    if is-caught-state?  [
+    
+    set-current-plot "Ghost Return per Episode"
+    set-current-plot-pen "ghosts-total"
+    set-plot-pen-color magenta 
+    plot episode-return-ghost
+   
+    set-current-plot "Ghost Ticks per Episode"
+    set-current-plot-pen "ghosts-total"
+    set-plot-pen-color magenta 
+    plot episode-ticks-ghost  
+    
+    
+  ]
+  
+  if is-random? [
+    ask pacmans [
+      setxy 0 -5
+    ]
+  ]
+    
+  
+  if who = 1 [
+    setxy -1 0 
+    ask ghosts with [who = 2] [setxy 1 0]
+  ]
+  
+  if who = 2 [
+    setxy 1 0
+    ask ghosts with [who = 1] [setxy -1 0]
+  ]
+  
+  ask ghosts [
+  set episode-ticks-ghost 0
+  set episode-return-ghost 0
+  ]
+  
+end 
+
+
+;;;;;;;;;;; ACTION DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; General movement after heading Ghost Red 
+to move-ghosts-red
+  
+  ask ghosts with [ who = 1 ] [
+    
+    set heading new-heading
+    
+    if [pcolor] of patch-ahead 1 != blue [
+      fd 1 
+    ]
+    
+  ]   
+end
+
+; General movement after heading Ghost Green
+to move-ghosts-green 
+  
+  ask ghosts with [ who = 2 ] [
+    
+    set heading new-heading
+    
+    if [pcolor] of patch-ahead 1 != blue [
+      fd 1 
+    ]
+    
+  ]
+  
+end 
+
+
+;; Red Ghost movement selection 
+to ghost-red-move-up 
+  ask ghosts with [who = 1] [ set new-heading 0 ] 
+  move-ghosts-red
+end 
+
+
+to ghost-red-move-right
+  ask ghosts with [who = 1] [ set new-heading 90 ] 
+  move-ghosts-red
+end
+
+to ghost-red-move-down
+  ask ghosts with [who = 1] [ set new-heading 180 ] 
+  move-ghosts-red
+end
+
+to ghost-red-move-left
+  ask ghosts with [who = 1] [ set new-heading 270 ] 
+  move-ghosts-red
+end
+
+
+;; Green Ghost movement selection 
+to ghost-green-move-up 
+  ask ghosts with [who = 2] [ set new-heading 0 ] 
+  move-ghosts-green
+end 
+
+
+to ghost-green-move-right
+  ask ghosts with [who = 2] [ set new-heading 90 ] 
+  move-ghosts-green
+end
+
+to ghost-green-move-down
+  ask ghosts with [who = 2] [ set new-heading 180 ] 
+  move-ghosts-green
+end
+
+to ghost-green-move-left
+  ask ghosts with [who = 2] [ set new-heading 270 ] 
+  move-ghosts-green
+end
+
+
+;;Random ghost movements for pacman learning 
+to move-ghosts-random
+  
+  let ghost-headings [0 90 180 270]
+
+  ask ghosts with [who = 1] [
+    let ghost-heading one-of ghost-headings
+    set heading ghost-heading
+
+    if [pcolor] of patch-ahead 1 != blue [
+      fd 1
+    ]
+  ]
+
+  ask ghosts with [who = 2] [
+    let ghost-heading one-of ghost-headings
+    set heading ghost-heading
+
+    if [pcolor] of patch-ahead 1 != blue [
+      fd 1
+    ]
+  ]
+end
+

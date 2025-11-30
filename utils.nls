@@ -1,0 +1,312 @@
+;; Utils Procedures
+
+; Includes: 
+; Episode end-state Reporters (is-end-state?) and (is-caught-state?) 
+; calculate-mat-num
+; show-ghost-grid (radius)
+; save-q-table (path)
+
+
+
+;;;;;;;;;;; END OF EPISODES REPORTERS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Pacman Reporter, asks if all pellets were eaten by the pacman agent
+to-report is-end-state?
+  ifelse all? patches with [pellet-grid? = true] [pcolor = black or pcolor = 3] [
+    report true
+  ]
+  [
+    report false
+  ]
+end
+
+;; Ghosts Reporter, if a ghost agent shares the same patch as pacman
+to-report is-caught-state?
+  
+  let caught? false
+  
+  ask ghosts [
+    if any? pacmans-on patch-here = true [
+      set caught? true
+    ] 
+    
+  ]
+ 
+ report caught?  
+ 
+end
+
+
+;;;;;;;;;;;;;;; GENERAL REPORTER FUNCTIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; Function to locate where precisely a turtle is within a 5x5 grid
+;; Input: x and y coordinate of potential turtle in grid 
+;; Output: Position number within that grid according to the numbers below  
+
+;; 1	2	 3	4  5		
+;; 6	7	 8	9	 10
+;; 11	12 13	14 15
+;; 16	17 18	19 20
+;; 21	22 23 24 25
+
+ ;; (x,y) of the input 
+
+;; (-2,2) (-1,2) (0,2) (1,2) (2,2)
+;; (-2,1) (-1,1) (0,1) (1,1) (2,1)
+;; (-2,0) (-1,0) c     (1,0) (2,0)
+;; (-2,-1)(-1,-1)(0,-1)(1,-1)(2,-1)
+;; (-2,-2)(-1,-2)(0,-2)(1,-2)(2,-2)
+
+to-report calculate-mat-num [xmat ymat]
+  
+  let turtle-position 0
+
+  let turtle-xcor xmat
+  let turtle-ycor ymat
+
+  let final-y 0
+  let final-x 0
+
+  
+  ;; Sets up the calculated position in the grid above from c for y
+  if turtle-ycor > 0 [
+    ifelse turtle-ycor > 1 [
+      set final-y 0
+      ] [
+      set final-y 5
+      ]
+  ]
+
+   ;; Sets up level position in the grid from c for y
+  if turtle-ycor = 0 [
+    set final-y 10
+  ]
+
+
+  ;; Sets up position in the grid below from c for y
+  if turtle-ycor < 0 [
+    ifelse turtle-ycor < -1 [
+      set final-y 20
+    ] [
+      set final-y 15
+    ]
+  ]
+  
+  
+  ;; Sets up position in the grid right from c for x 
+  if turtle-xcor > 0 [
+    ifelse turtle-xcor = 2 [
+      set final-x 5
+    ] [
+      set final-x 4
+    ]
+  ]
+  
+  ;; Sets up level position in the grid from c for x 
+  if turtle-xcor = 0 [
+    set final-x 3
+  ]
+
+  
+  ;; Sets up position in the grid below from c for y
+  if turtle-xcor < 0 [
+    ifelse turtle-xcor = -2 [
+      set final-x 1
+    ] [
+      set final-x 2
+    ]
+  ]
+
+
+  ;; Combines the numerical conversion of x and y to figure out the exact position
+  set turtle-position final-x + final-y
+  
+  ;;Outside the range
+  if xmat > 2 or xmat < -2 [
+    set turtle-position 0
+  ]
+  if ymat > 2 or ymat < -2 [
+    set turtle-position 0
+  ]
+  
+  report turtle-position
+
+
+end
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;; FILENAME WRITER FUNCTIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;; WRITER FUNCTIONS PACMAN ;;;;;;;;;;;;;;;;;;;;;
+
+; Pacman Episode Return 
+; path : String 
+; delete-original: number (if 1, deletes original file) 
+to write-episode-return-pacman [path delete-original]
+  
+  let pc-return [episode-return] of one-of pacmans 
+  
+  file-close-all
+  
+  if delete-original = 1 [
+    if file-exists? path [
+      file-delete path 
+    ]  
+  ]
+   
+  file-open path 
+  file-print pc-return
+  file-close 
+end 
+
+
+; Pacman Episode Ticks
+; path : String 
+; delete-original: number (if 1, deletes original file) 
+to write-episode-ticks-pacman [path delete-original]
+  
+  let pc-ticks [episode-ticks] of one-of pacmans 
+  
+  file-close-all 
+  
+  if delete-original = 1 [
+    if file-exists? path [
+      file-delete path 
+    ]
+  ]
+  
+   file-open path
+   file-print pc-ticks 
+   file-close  
+  
+end
+
+; Pacman Episode Captures
+; path : String 
+; delete-original: number (if 1, deletes original file) 
+to write-episode-captures-pacman [path delete-original]
+  
+  let pc-captures [episode-caught] of one-of pacmans  
+  
+  file-close-all 
+  
+  if delete-original = 1 [
+    if file-exists? path [
+      file-delete path 
+    ]
+  ]
+  
+   file-open path
+   file-print pc-captures 
+   file-close  
+  
+end 
+
+
+
+;;;;;;;;;;;;;; WRITER FUNCTIONS GHOSTS ;;;;;;;;;;;;;;;;;;;;;;
+
+; Ghost Episode Return 
+; path : String
+; who-ghost: specific ghost agent 
+; delete-original: number (if 1, deletes original file)
+to write-episode-return-ghost [path who-ghost delete-original]
+  
+  let g1-return [episode-return-ghost] of one-of ghosts with [who = who-ghost] 
+  
+  file-close-all
+  
+  if delete-original = 1 [
+    if file-exists? path [
+      file-delete path 
+    ]  
+  ]
+   
+  file-open path 
+  file-print g1-return
+  file-close 
+end 
+
+; Ghost Episode Tick
+; path : String
+; who-ghost: specific ghost agent 
+; delete-original: number (if 1, deletes original file
+to write-episode-ticks-ghost [path who-ghost delete-original]
+ 
+  let g-ticks [episode-ticks-ghost] of one-of ghosts with [who = who-ghost] 
+  
+  file-close-all 
+  
+  if delete-original = 1 [
+    if file-exists? path [
+      file-delete path 
+    ]
+  ]
+  
+   file-open path
+   file-print g-ticks 
+   file-close  
+  
+end 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; POTENTIAL OTHER FUNCTIONS TO USE ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; write the q-table for the specific agent
+to save-qtable [path agent]
+  
+  if agent = 0 [
+    ask pacmans [
+      let s qlearningextension:get-qtable
+      file-close-all
+      
+      if file-exists? path [
+        file-delete path
+      ]
+      
+      file-open path
+      file-print s
+      file-close
+  ]
+  ]
+  
+  if agent = 1 [
+    ask ghosts with [who = 1] [
+      let s qlearningextension:get-qtable
+      file-close-all
+      if file-exists? path [
+        file-delete path
+      ]
+      file-open path
+      file-print s
+      file-close
+    ]
+  ]
+  
+  if agent = 2 [
+    ask ghosts with [who = 2] [
+      let s qlearningextension:get-qtable
+      file-close-all
+      if file-exists? path [
+        file-delete path
+      ]
+      file-open path
+      file-print s
+      file-close
+    ]    
+  ]
+end
+
+; For Pacman, write episode return if the agent is almost done 
+to episode-return-almost-done [co] 
+  let patches-remaining count patches with [pcolor = white] 
+  
+  if patches-remaining <= co [
+    write-episode-return-pacman "almost-done-return.txt" 0 
+    set almost-done-check 1
+  ]
+  
+end 

@@ -1,0 +1,522 @@
+;; Pacman Procedures
+
+; Includes: 
+; Pacman Breed 
+; pacman-setup 
+; pacman-learning 
+; move-pacman
+; move-pacman-random
+
+
+
+;;;;;;;;;;;;;;;;; PACMAN GENERAL DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Pacman specific turtle
+breed [ pacmans pacman ]
+pacmans-own [ 
+  
+  new-heading
+
+  patchcolor-up 
+  patchcolor-down 
+  patchcolor-left
+  patchcolor-right  
+ 
+  target-dx
+  target-dy
+ 
+  g1-pos 
+  g2-pos 
+  
+  ghosts-top-left
+  ghosts-top-right
+  ghosts-bottom-left 
+  ghosts-bottom-right 
+  
+  patchxcor 
+  patchycor 
+  
+  episode-ticks
+  episode-caught
+  episode-return
+]
+
+
+;; Pacman Setup and learning 
+to pacman-setup
+
+  create-pacmans 1
+
+  ; State Definitions 
+  pacman-learning
+
+  ask pacmans [
+    set shape "star"
+    set color yellow
+    set xcor 0
+    set ycor -5
+    set heading 0
+
+    setxy 0 -5 
+    
+    set episode-ticks 0 
+    set episode-return 0
+    set episode-caught 0 
+  ]
+  
+  ;; Writing results in files 
+  if write-episode-return-pacman-flag [
+    write-episode-return-pacman filename-episode-return-pacman 1
+  ]
+  
+  
+  if write-episode-ticks-pacman-flag [
+    write-episode-ticks-pacman filename-episode-ticks-pacman 1
+  ]
+ 
+  if write-episode-captures-pacman-flag [
+    write-episode-captures-pacman filename-episode-captures-pacman 1
+  ]
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;; STATE DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+to pacman-learning
+  
+  
+  if pacmans-method = "nearest-pellet-method" [
+    ask pacmans [
+      qlearningextension:state-def [
+      
+        "patchcolor-up"
+        "patchcolor-right"
+        "patchcolor-down"
+        "patchcolor-left"
+      
+        "target-dx"
+        "target-dy"   
+    ]
+    
+      (qlearningextension:actions [ move-up ] [ move-right ] [ move-down ] [ move-left ])
+      qlearningextension:reward [ rewardFunc ]
+      qlearningextension:end-episode [ is-end-state? ] reset-episode
+      qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+      qlearningextension:learning-rate learning-rate-pacman
+      qlearningextension:discount-factor discount-factor-pacman
+  ]
+  ]
+  
+  if pacmans-method = "ghost-location-method" [
+    ask pacmans [
+      qlearningextension:state-def [
+      
+        "ghosts-top-left"
+        "ghosts-top-right"
+        "ghosts-bottom-left"
+        "ghosts-bottom-right"
+      
+        "patchcolor-up"
+        "patchcolor-right"
+        "patchcolor-down"
+        "patchcolor-left"  
+    ]
+    
+      (qlearningextension:actions [ move-up ] [ move-right ] [ move-down ] [ move-left ])
+      qlearningextension:reward [ rewardFunc ]
+      qlearningextension:end-episode [ is-end-state? ] reset-episode
+      qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+      qlearningextension:learning-rate learning-rate-pacman
+      qlearningextension:discount-factor discount-factor-pacman
+  ]  
+    
+  ]
+  
+  if pacmans-method = "visited-patch-method" [
+    ask pacmans [
+      qlearningextension:state-def [
+        
+        "patchcolor-up"
+        "patchcolor-right"
+        "patchcolor-down"
+        "patchcolor-left"  
+        
+        "patchxcor"
+        "patchycor"
+    ]
+    
+    (qlearningextension:actions [ move-up ] [ move-right ] [ move-down ] [ move-left ])
+    qlearningextension:reward [ rewardFunc ]
+    qlearningextension:end-episode [ is-end-state? ] reset-episode
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-pacman
+    qlearningextension:discount-factor discount-factor-pacman
+  ]   
+    
+  ]
+  
+  if pacmans-method = "combination-method" [
+    ask pacmans [
+      qlearningextension:state-def [
+        
+        "patchcolor-up"
+        "patchcolor-right"
+        "patchcolor-down"
+        "patchcolor-left"  
+        
+        "target-dx"
+        "target-dy"
+    ]
+    
+    (qlearningextension:actions [ move-up ] [ move-right ] [ move-down ] [ move-left ])
+    qlearningextension:reward [ rewardFunc ]
+    qlearningextension:end-episode [ is-end-state? ] reset-episode
+    qlearningextension:action-selection "e-greedy" [ 0.8 0.99995 ]
+    qlearningextension:learning-rate learning-rate-pacman
+    qlearningextension:discount-factor discount-factor-pacman
+  ]     
+  ]
+  
+  
+ 
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;;;; STATE FUNCTIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; Retrieve Current State before action 
+to pacman-get-current-state
+    ask pacmans [
+    
+    set patchxcor [pxcor] of patch-here 
+    set patchycor [pycor] of patch-here  
+    
+	
+    ;; Patches in a Von Neumann Grid 
+    let patch-up patch-at 0 1 
+    let patch-right patch-at -1 0
+    let patch-down patch-at 0 -1
+    let patch-left patch-at 1 0 
+    
+	
+    let color-up [pcolor] of patch-up
+    let color-right [pcolor] of patch-right
+    let color-down [pcolor] of patch-down
+    let color-left [pcolor] of patch-left 
+    
+	
+    set patchcolor-up ifelse-value color-up = white       [2]   [ ifelse-value color-up    = black [1] [0]]
+    set patchcolor-right ifelse-value color-right = white [2]   [ ifelse-value color-right = black [1] [0]]
+    set patchcolor-down ifelse-value color-down = white   [2]   [ ifelse-value color-down  = black [1] [0]]
+    set patchcolor-left ifelse-value color-left = white   [2]   [ ifelse-value color-left  = black [1] [0]]
+    	
+    
+    
+    ;; Additional state to check if a ghost in the von Neumann Grid 
+    if any? ghosts-on patch-up    [ set patchcolor-up    3 ] 
+    if any? ghosts-on patch-right [ set patchcolor-right 3 ]     
+    if any? ghosts-on patch-down  [ set patchcolor-down  3 ] 
+    if any? ghosts-on patch-left  [ set patchcolor-left  3 ] 
+    
+    
+    if any? ghosts-on patch-here [
+      setxy 0 -5 
+      set episode-caught episode-caught + 1 
+      
+      if is-random? [
+      ask ghosts [
+        setxy 0 0 
+      ]        
+      ]
+      
+    ]    
+    
+    ;; Ghost Location Method
+   if pacmans-method = "ghost-location-method"  [ 
+      update-location-ghosts
+    ]
+  
+    
+    ;; Nearest Pellet Method 
+    if pacmans-method = "nearest-pellet-method" or pacmans-method = "combination-method" [
+      update-target-pellet
+    ]
+    
+    ;; Visited-patch-method
+    if pacmans-method = "visited-patch-method" or pacmans-method = "combination-method" [
+      if color-up    = 3 [set patchcolor-up    4 ]
+      if color-right = 3 [set patchcolor-right 4 ]
+      if color-down  = 3 [set patchcolor-down  4 ]
+      if color-left  = 3 [set patchcolor-left  4 ]
+    ]
+  
+  ]
+  
+end 
+
+
+;; Update state after action 
+to pacman-update-env
+  ask pacmans [
+    
+    set episode-ticks episode-ticks + 1
+    set episode-return episode-return + [reward-pacman] of patch-here 
+    
+    if is-end-state? = true [
+      update-plots 
+    ]
+    
+    if any? ghosts-on patch-here [
+      setxy 0 -5 
+      set episode-caught episode-caught + 1 
+      
+      if is-random? [
+        
+        ask ghosts [
+          setxy 0 0 
+        ]
+      ]
+    ]
+  
+    if [pcolor] of patch-here = white [      
+      ask patch-here [
+        set pcolor black
+      ]
+    ]
+    
+    if pacmans-method = "visited-patch-method" or pacmans-method = "combination-method" [
+      ask patch-here [
+        set visited-x-times? visited-x-times? + 1
+    
+        if visited-x-times? > visited-limit [
+          set pcolor 3
+        ]
+        
+      ]
+    ]
+    
+    if episode-ticks > max-ticks-episode [
+      reset-episode
+    ]
+    
+  ]
+end
+
+;; For ghost-location-method
+to update-location-ghosts
+  
+  ;; find x and y coordinate of ghost 1 and its position relative to pacman within a 5x5 grid  
+    let g1-xcor [xcor] of one-of ghosts with [who = 1]
+    let g1-ycor [ycor] of one-of ghosts with [who = 1]
+    
+    ifelse abs(g1-xcor - xcor) <= 2 and abs(g1-ycor - ycor)  <= 2 [
+      let matx g1-xcor - xcor 
+      let maty g1-ycor - ycor 
+      
+      set g1-pos calculate-mat-num matx maty 
+      
+    ] 
+    [
+      set g1-pos 0 
+    ] 
+    
+   ;; find x and y coordinate of ghost 2 and its position relative to pacman within a 5x5 grid 
+    let g2-xcor [xcor] of one-of ghosts with [who = 2]
+    let g2-ycor [ycor] of one-of ghosts with [who = 2]    
+    
+    ifelse abs(g2-xcor - xcor) <= 2 and abs(g2-ycor - ycor)  <= 2 [
+      let matx g2-xcor - xcor 
+      let maty g2-ycor - ycor 
+      
+      set g2-pos calculate-mat-num matx maty 
+      
+    ] 
+    [
+      set g2-pos 0 
+    ]     
+    
+    ;; Numbers correlate with with their position 
+    let top-left-list [1 2 3 6 7 8 11 12]
+    let top-right-list [3 4 5 8 9 10 14 15]
+    let bottom-left-list [11 12 16 17 18 21 22 23]
+    let bottom-right-list [14 15 18 19 20 23 24 25]
+    
+    set ghosts-top-left 0
+    set ghosts-top-right 0
+    set ghosts-bottom-left 0 
+    set ghosts-bottom-right 0
+
+
+    if member? g1-pos top-left-list     [set ghosts-top-left     1]
+    if member? g1-pos top-right-list    [set ghosts-top-right    1]
+    if member? g1-pos bottom-left-list  [set ghosts-bottom-left  1] 
+    if member? g1-pos bottom-right-list [set ghosts-bottom-right 1]
+
+    if member? g2-pos top-left-list     [set ghosts-top-left     1]
+    if member? g2-pos top-right-list    [set ghosts-top-right    1]
+    if member? g2-pos bottom-left-list  [set ghosts-bottom-left  1] 
+    if member? g2-pos bottom-right-list [set ghosts-bottom-right 1]
+   
+end
+
+; For nearest-pellet-method 
+to update-target-pellet
+    
+    let remaining patches with [ pellet-grid? and pcolor = white ]
+
+    ifelse any? remaining [
+      ;; nearest by Euclidean distance to the turtle (Pacman)
+      let nearest min-one-of remaining [ distance myself ]
+      set target-dx ([pxcor] of nearest) - xcor
+      set target-dy ([pycor] of nearest) - ycor
+    ] [
+      ;; no pellets left
+      set target-dx 0
+      set target-dy 0
+    ]
+  
+end
+
+
+;;;;;;;;;;;;;;;;;;;; REWARD AND EPISODE END DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; Reward function calculated by patches in patches_reward.nls 
+to-report rewardFunc
+  report [reward-pacman] of patch-here  
+end
+
+
+; Gets called when episode ends for Pacman 
+to reset-episode 
+  
+  if write-episode-return-pacman-flag [
+    write-episode-return-pacman filename-episode-return-pacman 0
+  ]
+  
+  if write-episode-ticks-pacman-flag [
+    write-episode-ticks-pacman filename-episode-ticks-pacman 0 
+  ]
+  
+  if write-episode-captures-pacman-flag [
+    write-episode-captures-pacman filename-episode-captures-pacman 0 
+  ]
+  
+  set episode-check episode-check + 1
+  
+  if is-end-state? [
+    
+    set-current-plot "Pacman Ticks per Episode"
+    set-current-plot-pen "pacman-tick"
+    set-plot-pen-color black    
+    plot episode-ticks
+    
+    set-current-plot "Pacman Captures per Episode"
+    set-current-plot-pen "pacman-capture"
+    set-plot-pen-color black 
+    plot episode-caught 
+  ]
+  
+  setxy 0 -5
+  
+  set episode-return 0
+  set episode-caught 0  
+  set episode-ticks  0
+  ;; set almost-done-check 0 
+  
+  ask patches with [pcolor = black or pcolor = 3] [
+    set visited-x-times? 0 
+    set pcolor black 
+  ]
+  
+  ask patches with [pellet-grid? = true ] [ 
+    set pcolor white 
+  ]
+  
+end
+
+
+;;;;;;;;;;; ACTION DEFINITIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; General movement after a heading has been selected 
+to move-pacman
+  ask pacmans [
+    
+    ;; Heading given by the Q Learning extension
+    set heading new-heading
+    
+    
+    ;; visited patch method 
+    if pacmans-method = "visited-patch-method" or pacmans-method = "combination-method" [
+      if [pcolor] of patch-ahead 1 = 3 [      
+        fd 1 
+      ]
+
+      ]
+
+    if [pcolor] of patch-ahead 1 = black [      
+      fd 1
+    ]
+
+    if [pcolor] of patch-ahead 1 = white [
+      fd 1
+    ]
+    
+  ]
+  
+end
+
+
+;;Pacman movement and action space
+to move-up
+  ask pacmans [ set new-heading 0 ]
+  move-pacman
+end
+
+to move-right
+  ask pacmans [ set new-heading 90 ]
+  move-pacman
+end
+
+to move-down
+  ask pacmans [ set new-heading 180 ]
+  move-pacman
+end
+
+to move-left
+  ask pacmans [ set new-heading 270 ]
+  move-pacman
+end
+
+
+; Pacman movement random for ghosts learning 
+to move-pacman-random 
+
+ask pacmans [
+    
+    set patchxcor [pxcor] of patch-here 
+    set patchycor [pycor] of patch-here 
+    
+    let rheading [0 90 180 270] 
+    set new-heading one-of rheading
+    set heading new-heading
+    
+    if [pcolor] of patch-ahead 1 = black [
+      fd 1 
+    ]
+    
+    if [pcolor] of patch-ahead 1 = white [
+      fd 1 
+      
+      ask patch-here [
+        set pcolor black 
+      ]
+    
+    ]
+  
+  ]
+  
+end 
