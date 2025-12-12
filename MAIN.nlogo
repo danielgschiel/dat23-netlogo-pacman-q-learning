@@ -321,7 +321,7 @@ reward-pellet
 reward-pellet
 0
 5000
-3130.0
+3000.0
 10
 1
 NIL
@@ -723,7 +723,7 @@ max-ticks-episode
 max-ticks-episode
 0
 100000
-72000.0
+45000.0
 1000
 1
 NIL
@@ -753,7 +753,7 @@ discount-factor-pacman
 discount-factor-pacman
 0
 1
-1.0
+0.9
 0.01
 1
 NIL
@@ -887,7 +887,7 @@ SWITCH
 678
 write-episode-return-pacman-flag
 write-episode-return-pacman-flag
-1
+0
 1
 -1000
 
@@ -898,7 +898,7 @@ SWITCH
 678
 write-episode-ticks-pacman-flag
 write-episode-ticks-pacman-flag
-1
+0
 1
 -1000
 
@@ -908,7 +908,7 @@ INPUTBOX
 532
 750
 filename-episode-return-pacman
-episode-return-combination.txt
+cva-1-pacman-ep-return.txt
 1
 0
 String
@@ -919,7 +919,7 @@ INPUTBOX
 816
 745
 filename-episode-ticks-pacman
-episode-ticks-combination.txt
+cva-2-pacman-ep-ticks.txt
 1
 0
 String
@@ -980,7 +980,7 @@ CHOOSER
 ghosts-method
 ghosts-method
 "approximate-location-method" "exact-location-method" "joint-approximate-location-method" "joint-exact-location-method"
-2
+0
 
 MONITOR
 1400
@@ -1181,7 +1181,7 @@ INPUTBOX
 2093
 841
 filename-episode-ticks-ghost-red
-episode-ticks-joint-approx.txt
+cva-5-ghost-ep-ticks.txt
 1
 0
 String
@@ -1203,7 +1203,7 @@ INPUTBOX
 1673
 838
 filename-episode-return-ghost-red
-episode-return-joint-approx.txt
+cva-4-ghost-ep-return.txt
 1
 0
 String
@@ -1470,7 +1470,7 @@ SWITCH
 678
 write-episode-captures-pacman-flag
 write-episode-captures-pacman-flag
-1
+0
 1
 -1000
 
@@ -1480,7 +1480,7 @@ INPUTBOX
 277
 746
 filename-episode-captures-pacman
-episode-captures-combination.txt
+cva-1-pacman-ep-captures.txt
 1
 0
 String
