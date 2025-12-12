@@ -129,7 +129,6 @@ to ghosts-learning
   ask ghosts with [who = 1] [
       qlearningextension:state-def [
         "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
-        "ghost-dx" "ghost-dy"
         
         "pacman-dx" "pacman-dy"
       ]
@@ -145,7 +144,6 @@ to ghosts-learning
   ask ghosts with [who = 2] [
       qlearningextension:state-def [
         "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
-        "ghost-dx" "ghost-dy"
         
         "pacman-dx" "pacman-dy"
       ]
@@ -198,7 +196,6 @@ to ghosts-learning
       ask ghosts with [who = 1] [
       qlearningextension:state-def [
         "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
-        "ghost-dx" "ghost-dy"
         
         "pacman-dx" "pacman-dy"
 
@@ -217,7 +214,6 @@ to ghosts-learning
   ask ghosts with [who = 2] [
       qlearningextension:state-def [
         "ghost-patch-up" "ghost-patch-right" "ghost-patch-down" "ghost-patch-left" 
-        "ghost-dx" "ghost-dy"
         
         "pacman-dx" "pacman-dy"
 
@@ -244,8 +240,8 @@ to ghosts-get-current-state
   
   ask ghosts [
     
-    set patchxcor [pxcor] of patch-here 
-    set patchycor [pycor] of patch-here 
+    ;set patchxcor [pxcor] of patch-here 
+    ;set patchycor [pycor] of patch-here 
     
      if who = 1 [
         set ghost-dx [xcor] of one-of ghosts with [who = 2] - xcor
@@ -389,17 +385,23 @@ to ghost-update-env
    ask ghosts with [who = 1] [
       set episode-return-ghost episode-return-ghost + [reward-ghost-red] of patch-here 
       set episode-ticks-ghost episode-ticks-ghost + 1 
+      
+      if episode-ticks-ghost > max-ticks-episode [
+        reset-episode-ghost-red
+      ]
+      
     ]
   
     ask ghosts with [who = 2] [
       set episode-return-ghost episode-return-ghost + [reward-ghost-green] of patch-here 
       set episode-ticks-ghost episode-ticks-ghost + 1 
-    
+
+      if episode-ticks-ghost > max-ticks-episode [
+        reset-episode-ghost-green
+      ]  
+      
     ] 
   ]
-
-    
-  
   
 end
 
